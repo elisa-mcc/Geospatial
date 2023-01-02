@@ -1,0 +1,127 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-ide",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2023-01-02T10:32:34Z",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/208265681",
+        "building": "yes",
+        "name": "Villa Mazzucchelli",
+        "tourism": "museum",
+        "wikidata": "Q90315936",
+        "wikipedia": "it:Villa Mazzucchelli"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              10.3428657,
+              45.494088
+            ],
+            [
+              10.3427799,
+              45.4940279
+            ],
+            [
+              10.3433324,
+              45.4934187
+            ],
+            [
+              10.3431715,
+              45.493351
+            ],
+            [
+              10.3434612,
+              45.4930351
+            ],
+            [
+              10.3436114,
+              45.4930953
+            ],
+            [
+              10.344121,
+              45.4927456
+            ],
+            [
+              10.3443571,
+              45.4928734
+            ],
+            [
+              10.3445341,
+              45.492723
+            ],
+            [
+              10.3446306,
+              45.4927681
+            ],
+            [
+              10.3440942,
+              45.4933472
+            ],
+            [
+              10.3436597,
+              45.4931705
+            ],
+            [
+              10.343417,
+              45.4934702
+            ],
+            [
+              10.3438099,
+              45.4936518
+            ],
+            [
+              10.3431608,
+              45.4943475
+            ],
+            [
+              10.3430803,
+              45.4943099
+            ],
+            [
+              10.3431822,
+              45.4941971
+            ],
+            [
+              10.3431232,
+              45.4941708
+            ],
+            [
+              10.3432359,
+              45.4940166
+            ],
+            [
+              10.3430159,
+              45.4939151
+            ],
+            [
+              10.3428657,
+              45.494088
+            ]
+          ]
+        ]
+      },
+      "id": "way/208265681"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7762669813",
+        "name": "Musei Mazzucchelli",
+        "tourism": "museum"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          10.3434187,
+          45.493249
+        ]
+      },
+      "id": "node/7762669813"
+    }
+  ]
+}
