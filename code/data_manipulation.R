@@ -1,4 +1,5 @@
-## Create a df for each municipality with the monthly average level of pm10
+# Create a df for each municipality with the monthly average level of pm10 and pm2.5
+## This is the script used to create the pm10 level datasets, some changes need to be made to create the pm2.5 datasets
 
 #download the data from: https://www.arpalombardia.it/Pages/Aria/Richiesta-Dati.aspx --> Rircerca stime comunali
 #read csv 
