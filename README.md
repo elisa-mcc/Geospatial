@@ -20,6 +20,13 @@ pip install -r requirements.txt
 
 For the Project_analysis.Rmd the folder data_analysis should be downloaded.
 
+
+### Data
+Data used in this project are from:
+- https://www.arpalombardia.it/Pages/Aria/Richiesta-Dati.aspx
+- https://dati.lombardia.it/
+- https://www.isprambiente.gov.it/it/banche-dati 
+
    
 
 
