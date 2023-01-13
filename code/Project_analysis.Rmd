@@ -1,0 +1,333 @@
+---
+title: "R Notebook"
+output: html_notebook
+author: "Elisa Maccabiani"
+---
+From the maps in  Project.ipynb, I expect that the level of PM2.5 has some spatial correlations and it is influenced by ammonia emission. To formally prove this hypothesis, let's proceed by: 
+- Global spatial autocorrelation: investigate if level of PM2.5 generally follow a particular pattern in its geographical distribution 
+- Lagrange Multiplier (LM) tests of spatial dependence on OLS residuals
+- Local Spatial Autocorrelation : detect presence of cluster
+
+
+```{r}
+#library
+library(sf)
+library(spdep)
+library(dplyr)
+library(tmap)
+library(leaflet)
+library(spatialreg)
+library(ggplot2)
+```
+
+
+## Reading Shapefile 
+
+```{r}
+df <- st_read("data_analysis")
+```
+
+
+```{r}
+str(df)
+summary(df)
+```
+Since there are a lot of NaN values, we replace them in ALLEVAMENT and Ammoniaca variables with 0.
+```{r}
+df2 <- df %>% 
+  mutate(ALLEVAMENT = coalesce(ALLEVAMENT, 0),
+         Ammoniaca = coalesce(Ammoniaca, 0))
+```
+
+
+We create a dataframe with the number of farming and the tonnes of ammonia emitted for each municipality.
+```{r}
+dataf <- df2 %>%
+  group_by(COMUNE) %>%
+  summarise(tot_ALLEVAMENT =sum(ALLEVAMENT),
+            tot_Ammoniaca=mean(Ammoniaca),
+            PM25 = unique(Particelle),
+            geometry = unique(geometry))
+```
+
+We can see the municipality with the higher number of intensive farmings.
+```{r}
+dataf[dataf$tot_ALLEVAMENT == max(dataf$tot_ALLEVAMENT),]
+```
+But we want also to know the municipality with the higher level of ammonia emission
+
+```{r}
+dataf[dataf$tot_Ammoniaca == max(dataf$tot_Ammoniaca),]
+```
+We can notice that Ghedi has an higher level tot_Ammoniaca even if there are only 3 farms, this means that these structures produces a lot of ammonia.
+
+Let's see the municipality with the highest value of PM2.5
+```{r}
+dataf[dataf$PM25 == max(dataf$PM25),]
+```
+We can notice that in this case there is only one farm but ammonia emission is quite high.
+
+
+
+##Visualizing the spatial content of a shapefile:
+```{r}
+dataf$tot_ALL_Disc <- ifelse(dataf$tot_ALLEVAMENT == 0, 'No', 'Yes')
+```
+
+
+```{r}
+ggplot(dataf)+  geom_sf(aes(fill = tot_ALL_Disc))+ theme_classic()+
+  scale_fill_manual(values = c( "gray90", "seagreen3"))+
+  labs(x='', y='', fill= 'Intensive Farming')+
+  theme(axis.text = element_blank(), 
+        axis.line = element_blank(),
+        axis.ticks = element_blank())
+  
+```
+From the above plot, we can see if a municipality has at least one intensive farming or no-one.
+
+```{r}
+coords <- st_centroid(st_geometry(dataf))
+
+plot(st_geometry(dataf), border = "green4")
+plot(coords, add = TRUE)
+```
+
+## Global effect
+We are going to find the minimum threshold distance such that every region has at least one neighbor
+```{r}
+knn1IT <- knn2nb(knearneigh(coords,k=1))
+all.linkedT <- max(unlist(nbdists(knn1IT, coords))) 
+all.linkedT
+```
+We have found that the minimum threshold distance is about 8.17 km. Hence, the cut-off distance has to be greater than 8.17 km.
+We build different values of the cut-off distance
+```{r}
+dnb82 <- dnearneigh(coords, 0, 8.2)
+dnb10 <- dnearneigh(coords, 0, 10)
+dnb25 <- dnearneigh(coords, 0, 25)
+```
+
+
+```{r}
+plot(st_geometry(dataf), border="grey",xlab="",ylab="")
+plot(dnb82, coords, add=TRUE, col="blue")
+```
+As the cut-off distance increases, the number of links grows rapidly.
+
+```{r}
+plot(st_geometry(dataf), border="grey",xlab="",ylab="")
+plot(dnb10, coords, add=TRUE, col="red")
+```
+
+```{r}
+plot(st_geometry(dataf), border="grey",xlab="",ylab="")
+plot(dnb25, coords, add=TRUE, col="violet")
+```
+
+Let's create a row-standardized spatial weights matrix for each critical cut-off neighbours 
+```{r}
+dnb82.listw <- nb2listw(dnb82,style="W")
+dnb10.listw <- nb2listw(dnb10,style="W")
+dnb25.listw <- nb2listw(dnb25,style="W")
+```
+
+
+### The Moran's I test of spatial autocorrelation 
+
+We perform the global Moran's I test of spatial autocorrelation by referring to the variable dataf$PM25.
+But first, let's visualize the situation of PM2.5 level in the province of Brescia: it seems that there may be some form of spatial dependence. 
+
+
+```{r}
+tm_shape(dataf) + 
+    tm_polygons(col = "PM25", title = "Level of PM2.5") +
+    tm_layout(legend.outside = TRUE)
+```
+
+
+We apply the global Moran's I test to the level of PM2.5 with different specifications of the spatial weights matrix (under the assumption of normality).  The hypothesis we are testing states that *the level PM2.5 is normally distributed across municipalities*
+```{r}
+moran.test(dataf$PM25, dnb82.listw, randomisation=FALSE)
+moran.test(dataf$PM25, dnb10.listw, randomisation=FALSE)
+moran.test(dataf$PM25, dnb25.listw, randomisation=FALSE)
+```
+The Moran’s I statistic with dnb82 is 0.887575087, the second with dnb10 is 0.8788045169, the last one with dnb25 is 0.7345756902 and their p-value < 0.001, hence these models suggest that the spatial autocorrelation of PM25 is statistically significant and it is positive: high values are close to high values and low values are close to low values. Moreover, since all the values of Moran's statistic are close enough to +1, we can assume that the positive spatial autocorrelation is quite strong.
+
+
+
+Let's apply the global Moran's I test to the level of PM2.5 with different specifications of the spatial weights matrix (under the assumption of randomization).  The hypothesis we are testing states that *the level PM2.5 is randomly distributed across municipalities following a completely random process*.
+```{r}
+moran.test(dataf$PM25, dnb82.listw, randomisation=TRUE)
+moran.test(dataf$PM25, dnb10.listw, randomisation=TRUE)
+moran.test(dataf$PM25, dnb25.listw, randomisation=TRUE)
+```
+Also under the assumption of randomization, all models suggest that there is a positive and statistically significant spatial autocorrelation of PM25.
+
+
+Lastly, we apply the test to the level of PM2.5 with different specifications of the spatial weights matrix (under permutation bootstrap)
+```{r}
+moran.mc(dataf$PM25, dnb82.listw, nsim=999)
+moran.mc(dataf$PM25, dnb10.listw, nsim=999)
+moran.mc(dataf$PM25, dnb25.listw, nsim=999)
+```
+Bootstrap confirms again what we have discovered with previous tests.From all these tests, we can assume that the spatial autocorrelation of PM25 is statistically relevant and positive.
+
+
+
+### The Moran's I test of spatial autocorrelation in OLS residuals 
+We can use the Moran's I test also as a diagnostic tool to identify the presence of spatial autocorrelation in the residuals of a linear regression model
+
+```{r}
+OLSmodel <- lm(PM25 ~ tot_ALLEVAMENT + tot_Ammoniaca, dataf)
+summary(OLSmodel) 
+```
+From the above summary, we can say that the level of PM25 is influenced by the variable tot_Ammoniaca. In fact, according to these results, we can assume that for an increase of one unit of the tot_Ammoniaca variable, the PM2.5 will grow of 0.23038; this relation is significant due to the small p-value (6.97e-10). Since the quantity of ammonia considered in this research comes from intensive farming, we could say that intensive farming influences the level of PM2.5.
+After this analysis, we can assume that the level of PM2.5 is well described by the variables tot_Ammoniaca.
+
+If we plot the studentized residuals, we can see if there seems to be a spatial dependence in the residuals
+```{r}
+# add studentized residuals to dataf
+dataf$studres <- rstudent(OLSmodel)
+
+#plot
+qpal <- colorQuantile("YlOrRd", dataf$studres, n=5) 
+leaflet(dataf) %>%
+  addPolygons(stroke = FALSE, fillOpacity = .7, 
+              smoothFactor = 0.2, 
+              color = ~qpal(studres)) %>%
+  addTiles() 
+```
+
+
+Let's compute the Moran's I test in the OLS residuals
+```{r}
+lm.morantest(OLSmodel, dnb82.listw,resfun=rstudent)
+lm.morantest(OLSmodel, dnb10.listw,resfun=rstudent)
+lm.morantest(OLSmodel, dnb25.listw,resfun=rstudent)
+```
+In all these cases, there appears to be significant clustering in the residuals, since the p-value < .0001, hence the hypothesis of no spatial autocorrelation in the OLS residuals could be rejected.
+
+
+##The Lagrange multiplier (LM) test of spatial dependence on OLS residuals
+With the LM test, we consider the alternative hypothesis to contrast the null hypothesis of absence of spatial dependence.
+```{r}
+OLSlmTests <- lm.LMtests(OLSmodel, dnb82.listw, 
+                    test=c("LMerr", "LMlag", "RLMerr", "RLMlag"))
+summary(OLSlmTests)
+```
+Since p-values for the LMerr, LMlag and RLMlag tests are all significant, because of p-value very small (< 0.001), we can say that there is evidence of spatial autocorrelation in the residuals of the linear regression model. There is a pattern of dependence in the model residuals based on the spatial location of the observations, and it is present both globally and locally. 
+Since we have evidence in favor of SAR, we estimate SDM:
+```{r}
+SDM <- lagsarlm(PM25 ~ tot_ALLEVAMENT + tot_Ammoniaca, data = dataf, listw=dnb82.listw,
+                type="mixed")
+```
+Now, with the likelihood ratio test, we can see if:
+- the SDM can be simplified to the SLM
+```{r}
+# compute SAR
+SAR <- lagsarlm(PM25 ~ tot_ALLEVAMENT + tot_Ammoniaca, data = dataf, listw=dnb82.listw)
+
+anova(SDM, SAR)
+```
+
+
+- the SDM can be simplified to the  SEM:
+```{r}
+# compute SEM
+SEM <- errorsarlm(PM25 ~ tot_ALLEVAMENT + tot_Ammoniaca, data = dataf, listw=dnb82.listw)
+
+anova(SDM, SEM)
+```
+
+Small p-values in both tests suggests that the null hypothesis cloud be rejected in favor of the alternative hypothesis: the SDM is a better fit for the data.  
+Now we can estimate and test the impact uneder the SDM model:
+```{r}
+impSDM <- impacts(SDM, listw=dnb82.listw, R=100)
+summary(impSDM, zstats=TRUE, short=TRUE)
+```
+Results show that the significant direct impact associated to ammonia emission, implying that higher levels of these variables in a municipality lead to increases in level of PM2.5 in that same municipality. 
+
+
+##  Local effect
+
+It may be  interesting to consider the presence of local spatial clusters and the specific contribution of each municipalities to the global pattern of spatial dependence.
+We can investigate local spatial autocorrelation using the Moran scatterplot and the local Moran's I. Let's plot the Moran scatterplot.
+```{r}
+mplot <- moran.plot(dataf$PM25, listw=dnb82.listw, main="Moran Scatterplot", 
+         return_df=T, xlab = 'PM2.5', ylab = 'spatial lag of PM2.5')
+```
+From the above plot, we can see that points are mostly the upper right (high-high) and lower left (low-low)  quadrants. This kind of points' distribution could suggest positive spatial association of values that are higher and lower than the sample mean, respectively. We can also see that the region low-low has many marked points, hence this region is relatively more influential than the others in determining the observed value of global Moran's I and  exerts the most influence on the regression line.
+
+
+It may be useful to map municipalities according to their hat value influence measure
+```{r}
+dataf$hat_value <- mplot$hat
+tm_shape(dataf) + tm_polygons("hat_value")+ tm_layout(legend.outside = TRUE)
+```
+Municipalities in the most northern part are  more influential in determining the observed value of global Moran's I, since they are far below the sample mean. In fact, these municipalities have lower level of PM2.5. than others.
+
+
+Let's compute the significance of the revealed pattern by relying on the Local Moran's I index
+
+```{r}
+lmI <- localmoran(dataf$PM25, dnb82.listw)
+
+# see results for each municipality
+oid <- as.numeric(rownames(dataf))
+printCoefmat(data.frame(lmI[oid,], row.names=dataf$COMUNE[oid]),
+ check.names=FALSE)
+
+```
+
+Considering the above results,it is important to remember that positive value for Ii indicates that the unit is surrounded by units with similar values.
+Let's plot Local Moran.
+
+```{r}
+# binds results to our polygon shapefile
+moran.map <- cbind(dataf, lmI)
+```
+
+```{r}
+tm_shape(moran.map) +
+  tm_fill(col = "Ii",
+          style = "quantile",
+          title = "Local Moran Statistic", 
+          ) + tm_layout(legend.outside = TRUE)
+```
+
+We can also plot the local indicators of spatial association (LISA)
+```{r}
+quadrant <- vector(mode="numeric",length=nrow(lmI))
+
+# centers the variable PM25 around its mean
+mean_pm25 <- dataf$PM25 - mean(dataf$PM25)     
+
+# centers the local Moran's around the mean
+mean_lmI <- lmI[,1] - mean(lmI[,1])    
+
+# significance threshold
+signif <- 0.1 
+
+# builds a data quadrant
+quadrant[mean_pm25 >0 & mean_lmI>0] <- 4  
+quadrant[mean_pm25 <0 & mean_lmI<0] <- 1      
+quadrant[mean_pm25 <0 & mean_lmI>0] <- 2
+quadrant[mean_pm25 >0 & mean_lmI<0] <- 3
+quadrant[lmI[,5]>signif] <- 0   
+
+# plot in r
+brks <- c(0,1,2,3,4)
+colors <- c("white","blue",rgb(0,0,1,alpha=0.4),rgb(1,0,0,alpha=0.4),"red")
+plot(dataf["PM25"], border="lightgray",main = '',
+     col=colors[findInterval(quadrant,brks,all.inside=FALSE)])
+legend("topright", legend = c("insignificant","low-low","low-high","high-low","high-high"),
+       fill=colors)
+
+```
+From the above plot, we can notice that municipalities in the southern zone have a high (above average) value of PM2.5, while municipalities colored by blue  have a low (below average) level of PM2.5. All these municipalities are characterized by positive spatial autocorrelation and are surrounded by municipalities with similar values. On the other hand, the light red and the light blue municipalities are surrounded by other municipalities with dissimilar values, hence there is a negative spatial autocorrelation.
+
+
+
+
+
