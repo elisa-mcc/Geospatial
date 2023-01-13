@@ -246,7 +246,7 @@ Now we can estimate and test the impact uneder the SDM model:
 impSDM <- impacts(SDM, listw=dnb82.listw, R=100)
 summary(impSDM, zstats=TRUE, short=TRUE)
 ```
-Results show that the significant direct impact associated to ammonia emission, implying that higher levels of these variables in a municipality lead to increases in level of PM2.5 in that same municipality. 
+Results show that there is a significant direct impact associated to ammonia emission, this implies that higher levels of this variable in a municipality lead to increase in level of PM2.5 in that same municipality. 
 
 
 ##  Local effect
