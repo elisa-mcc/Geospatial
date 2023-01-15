@@ -53,6 +53,7 @@ for(i in 1:length(file_names)) {
 
 pm10_comuni_bs <- tot_comuni[, c("Month", "PM10...µg.m.", "COMUNE")]
 
+# save dataset
 write.csv(x = pm10_comuni_bs, file = "pm10_comuni_brescia.csv")
 
 
