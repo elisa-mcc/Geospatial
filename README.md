@@ -8,8 +8,8 @@ This project aims to study the level of air pollution in the province of Brescia
 - In the `data` folder you can find all the date required for the analysis, including orthophoto file
 - In the  `code` folder you che find:
    * data_manipulation.R = file necessary to create datasets about mounthly level of PM10 and PM2.5 of municipalities in Brescia
-   * Project.ipynb = contains map of municipalities of Brescia, map about air pollution, map of livestock (more practical part)
-   * Project_analysis.Rmd = contains spatial analysis (more theoretical part)
+   * Project.ipynb = contains map of municipalities of Brescia, map about air pollution, map of livestock (more practical part about representation)
+   * Project_analysis.Rmd = contains spatial analysis (more theoretical part about analysis)
 
 ### How to run the project
 The files are written in Python 3.10.0 using Jupyter Notebooks.
